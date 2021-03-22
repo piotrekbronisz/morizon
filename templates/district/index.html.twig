@@ -1,0 +1,135 @@
+{% extends 'base.html.twig' %}
+{% block body %}
+<div class="row">
+    {% if districts|length > 0 %}
+        {% set districtIndexUrl = url('district_index', {'cityId': app.request.get('cityId')}) %}
+        {% set nameSort = app.request.get('nameSort') %}
+        {% set areaSort = app.request.get('areaSort') %}
+        {% set populationSort = app.request.get('populationSort') %}
+        <form method="get" action="{{ districtIndexUrl }}" id="district_filters_form"><input type="submit" style="visibility: hidden;" /></form>
+        <input type="hidden" name="nameSort" value="{{ nameSort }}" form="district_filters_form">
+        <input type="hidden" name="areaSort" value="{{ areaSort }}" form="district_filters_form">
+        <input type="hidden" name="populationSort" value="{{ populationSort }}" form="district_filters_form">
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th class="text-center align-middle">Zdjęcie</th>
+                <th class="align-middle">
+                    <a href="{{ districtIndexUrl }}?{{ url.getCurrQuery(app.request, {'nameSort': (nameSort == 'asc') ? 'desc' : 'asc'}) }}">
+                        Nazwa
+                        {% if(nameSort|length > 0) %}
+                            {% if(nameSort == 'desc') %}
+                                ˅
+                            {% elseif(nameSort == 'asc') %}
+                                ˄
+                            {% endif %}
+                        {% endif %}
+                    </a>
+                    <br>
+                    <input type="text" name="name" form="district_filters_form" value="{{ app.request.get('name') }}">
+                </th>
+                <th class="text-right">
+                    <a href="{{ districtIndexUrl }}?{{ url.getCurrQuery(app.request, {'areaSort': (areaSort == 'asc') ? 'desc' : 'asc'}) }}">
+                        Powierzchnia ha
+                        {% if(areaSort|length > 0) %}
+                            {% if(areaSort == 'desc') %}
+                                ˅
+                            {% elseif(areaSort == 'asc') %}
+                                ˄
+                            {% endif %}
+                        {% endif %}
+                    </a>
+                    <br>
+                    Min. <input type="text" name="areaFrom" form="district_filters_form" value="{{ app.request.get('areaFrom') }}"><br>
+                    Max. <input type="text" name="areaTo" form="district_filters_form" value="{{ app.request.get('areaTo') }}">
+                </th>
+                <th class="text-right">
+                    <a href="{{ districtIndexUrl }}?{{ url.getCurrQuery(app.request, {'populationSort': (populationSort == 'asc') ? 'desc' : 'asc'}) }}">
+                        Liczba ludności
+                        {% if(populationSort|length > 0) %}
+                            {% if(populationSort == 'desc') %}
+                                ˅
+                            {% elseif(populationSort == 'asc') %}
+                                ˄
+                            {% endif %}
+                        {% endif %}
+                    </a>
+                    <br>
+                    Min. <input type="text" name="populationFrom" form="district_filters_form" value="{{ app.request.get('populationFrom') }}"><br>
+                    Max. <input type="text" name="populationTo" form="district_filters_form" value="{{ app.request.get('populationTo') }}">
+                </th>
+            </tr>
+            </thead>
+
+            <tbody>
+
+            {% for district in districts.items %}
+                <tr>
+                    <td class="text-center">
+                        {% if(district.getImagePath()|length) %}
+                            <img src="{{ url('front_image_getImageWithSide', {sidePx: '100', imageName: district.getImagePath()}) }}" class="districtImg">
+                        {% else %}
+                            <div class="spinner-border d-none" role="status">
+                                <span class="visually-hidden"></span>
+                            </div>
+                            <form method="post" action="{{ url('district_update', {districtId: district.getId()}) }}" class="image-form" onsubmit="return submitForm(this)" enctype="multipart/form-data">
+                                <input type="file" accept="image/jpeg, image/png" name="image" onchange="this.parentElement.querySelector('input[type=submit]').click()">
+                                <input type="submit" class="d-none" />
+                            </form>
+                        {% endif %}
+                    </td>
+                    <td class="align-middle">{{ district.name }}</td>
+                    <td class="text-right align-middle">{{ district.getArea() }}</td>
+                    <td class="text-right align-middle">{{ district.getPopulation() }}</td>
+                </tr>
+            {% endfor %}
+
+            </tbody>
+        </table>
+        <script>
+            function submitForm(form) {
+                form.classList.add("d-none");
+                form.parentElement.querySelector('div.spinner-border').classList.remove("d-none");
+
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", form.action, true);
+                xhr.onload = function (e) {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            form.reset();
+                            form.parentElement.querySelector('div.spinner-border').classList.add("d-none");
+                            var responseData = JSON.parse(xhr.responseText);
+                            var img = document.createElement("img");
+                            img.src = "/image/100/" + responseData.image;
+                            insertAfter(img, form);
+                            form.remove();
+                        } else {
+                            form.reset();
+                            form.classList.remove("d-none")
+                            form.parentElement.querySelector('div.spinner-border').classList.add("d-none");
+                        }
+                    }
+                };
+                xhr.onerror = function (e) {
+                    form.classList.remove("d-none")
+                    form.parentElement.querySelector('div.spinner-border').classList.add("d-none");
+                };
+                var formData = new FormData(form);
+                xhr.send(formData);
+                return false;
+            }
+
+            function insertAfter(newNode, referenceNode) {
+                referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+            }
+        </script>
+    {% else %}
+        <div class="col-12 p-0">
+            <div class="alert alert-warning">Brak danych</div>
+        </div>
+    {% endif %}
+    </div>
+{% endblock %}
+{% block button_refresh %}
+    <a href="{{ url('district_refresh', {'cityId': app.request.get('cityId')}) }}" class="btn btn-primary btn-sm">Pobierz/odśwież dane</a>
+{% endblock %}
